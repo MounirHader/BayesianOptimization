@@ -335,6 +335,7 @@ class BayesOpt(object):
         # self.data = self.sampling(self.n_init_sample)
         samples = self._space.sampling(self.n_init_sample)
         self.data = self._to_dataframe(samples)
+        print self.data
         self.evaluate(self.data, runs=self.init_n_eval)
 
         # set the initial incumbent
