@@ -11,7 +11,8 @@ from __future__ import print_function
 import pdb
 import warnings, dill, functools, itertools
 from joblib import Parallel, delayed
-import copyreg as copy_reg
+#import copyreg as copy_reg
+import copy_reg
 
 import pandas as pd
 import numpy as np
