@@ -94,7 +94,7 @@ search_space =  stack_sizes * strides * filters *  kernel_size * activation * ac
 # use random forest as the surrogate model
 model = RandomForest(levels=search_space.levels)
 opt = BayesOpt(search_space, objective, model, max_iter=n_step, random_seed=666,
-               n_init_sample=10, n_point=10, n_jobs=10, minimize=True,
+               n_init_sample=3, n_point=3, n_jobs=3, minimize=True,
                verbose=True, debug=False, optimizer='MIES', resume_file="mnist.pkl")
 
 incumbent, stop_dict = opt.run()
