@@ -15,14 +15,15 @@ from numpy.random import randint, rand, randn, geometric
 from ..utils import boundary_handling
 
 class Individual(list):
-    """Make it possible to index Python list object using the enumerables
+    """
+    Make it possible to index Python list object using the enumerables
     """
     def __getitem__(self, keys):
         if isinstance(keys, int):
             return super(Individual, self).__getitem__(keys)
         elif hasattr(keys, '__iter__'):
             return Individual([super(Individual, self).__getitem__(int(key)) for key in keys])
-    
+
     def __setitem__(self, index, values):
         # In python3 hasattr(values, '__iter__') returns True for string type...
         if hasattr(values, '__iter__') and not isinstance(values, str):
@@ -108,7 +109,7 @@ class mies(object):
         self._id_p = np.arange(N_p) + self._id_eta[-1] + 1 if N_p else []
         self._id_hyperpar = np.arange(self.dim, len(individual0))
         # self.par_id = list(range(self.dim))
-        
+
         # self.cols = self.cols_x + self.cols_sigma + self.cols_eta + self.cols_p
 
         # initialize the population
@@ -122,14 +123,14 @@ class mies(object):
         self.tolfun = 1e-5
         self.nbin = int(3 + ceil(30. * self.dim / self.lambda_))
         self.histfunval = zeros(self.nbin)
-        
+
     def _check_bounds(self, bounds):
         bounds = np.atleast_2d(bounds)
         bounds = bounds.T if bounds.shape[0] != 2 else bounds
         if any(bounds[0, :] >= bounds[1, :]):
             raise ValueError('lower bounds are bigger than the upper bounds')
         return bounds
-        
+
     def _set_hyperparameter(self):
         # hyperparameters: mutation strength adaptation
         if self.N_r:
@@ -169,7 +170,7 @@ class mies(object):
     def select(self):
         pop = self.pop_mu + self.pop_lambda if self.plus_selection else self.pop_lambda
         fitness = np.r_[self.f_mu, self.f_lambda] if self.plus_selection else self.f_lambda
-        
+
         fitness_rank = argsort(fitness)
         if not self.minimize:
             fitness_rank = fitness_rank[::-1]
@@ -244,19 +245,19 @@ class mies(object):
 
         if self.eval_count != 0:
             fitness = self.f_lambda
-            # sigma = np.atleast_2d([__[self._id_sigma] for __ in self.pop_mu]) 
+            # sigma = np.atleast_2d([__[self._id_sigma] for __ in self.pop_mu])
             # sigma_mean = np.mean(sigma, axis=0)
-            
+
             # tolerance on fitness in history
             self.histfunval[int(mod(self.eval_count / self.lambda_ - 1, self.nbin))] = fitness[0]
             if mod(self.eval_count / self.lambda_, self.nbin) == 0 and \
                 (max(self.histfunval) - min(self.histfunval)) < self.tolfun:
                     self.stop_dict['tolfun'] = True
-            
+
             # flat fitness within the population
             if fitness[0] == fitness[int(min(ceil(.1 + self.lambda_ / 4.), self.mu_ - 1))]:
                 self.stop_dict['flatfitness'] = True
-            
+
             # TODO: implement more stop criteria
             # if any(sigma_mean < 1e-10) or any(sigma_mean > 1e10):
             #     self.stop_dict['sigma'] = True
@@ -273,7 +274,7 @@ class mies(object):
             #         self.stop_dict['TolUPX'] = True
             #     else:
             #         self.flg_warning = True
-            
+
         return any(self.stop_dict.values())
 
     def _better(self, perf1, perf2):
@@ -288,7 +289,7 @@ class mies(object):
                 p1, p2 = randint(0, self.mu_), randint(0, self.mu_)
                 individual = self.recombine(p1, p2)
                 self.pop_lambda[i] = self.mutate(individual)
-            
+
             # TODO: the constraint handling method here will (by chance) turn really bad cadidates
             # (the one with huge sigmas) to good ones and hence making the step size explode
             self.keep_in_bound(self.pop_lambda)
@@ -297,7 +298,7 @@ class mies(object):
 
             curr_best = self.pop_mu[0]
             xopt_, fopt_ = curr_best[self._id_var], self.f_mu[0]
-            
+
             self.iter_count += 1
 
             if self._better(fopt_, self.fopt):

@@ -20,7 +20,7 @@ class SearchSpace(object):
             self.bounds = [tuple(b) for b in bounds]
         else:
             self.bounds = [tuple(bounds)]
-            
+
         self.dim = len(self.bounds)
         if var_name is not None:
             var_name = [var_name] if isinstance(var_name, six.string_types) else var_name
@@ -32,11 +32,11 @@ class SearchSpace(object):
         The output is a list of shape (N, self.dim)
         """
         pass
-    
+
     def _set_index(self):
         self.C_mask = self.var_type == 'C'  # Continuous
         self.O_mask = self.var_type == 'O'  # Ordinal
-        self.N_mask = self.var_type == 'N'  # Nominal 
+        self.N_mask = self.var_type == 'N'  # Nominal
 
         self.id_C = np.nonzero(self.C_mask)[0]
         self.id_O = np.nonzero(self.O_mask)[0]
@@ -72,7 +72,7 @@ class ProductSpace(SearchSpace):
         self._sub_space2 = deepcopy(space2)
         self._set_index()
         self.levels = OrderedDict([(i, self.bounds[i]) for i in self.id_N])
-    
+
     def sampling(self, N=1):
         # TODO: should recursion be avoided here?
         a = self._sub_space1.sampling(N)
@@ -94,7 +94,7 @@ class ContinuousSpace(SearchSpace):
         self._bounds = np.atleast_2d(self.bounds).T
         assert all(self._bounds[0, :] < self._bounds[1, :])
         self._set_index()
-    
+
     def __mul__(self, N):
         if isinstance(N, SearchSpace):
             return super(ContinuousSpace, self).__mul__(N)
@@ -105,7 +105,7 @@ class ContinuousSpace(SearchSpace):
             self.bounds = self.bounds * N
             self._bounds = np.tile(self._bounds, (1, N))
             return self
-    
+
     def __rmul__(self, N):
         return self.__mul__(N)
 
@@ -127,7 +127,7 @@ class NominalSpace(SearchSpace):
         self._levels = [np.array(b) for b in self.bounds]
         self._n_levels = [len(l) for l in self._levels]
         self._set_index()
-        
+
     def __mul__(self, N):
         if isinstance(N, SearchSpace):
             return super(NominalSpace, self).__mul__(N)
@@ -140,10 +140,10 @@ class NominalSpace(SearchSpace):
             self._levels = self._levels * N
             self._n_levels = self._n_levels * N
             return self
-    
+
     def __rmul__(self, N):
         return self.__mul__(N)
-    
+
     def sampling(self, N=1):
         res = np.empty((N, self.dim), dtype=object)
         for i in range(self.dim):
@@ -175,10 +175,10 @@ class OrdinalSpace(SearchSpace):
             self.bounds = self.bounds * N
             self._lb, self._ub = self._lb * N, self._ub * N
             return self
-    
+
     def __rmul__(self, N):
         return self.__mul__(N)
-    
+
     def sampling(self, N=1):
         res = np.zeros((N, self.dim), dtype=int)
         for i in range(self.dim):
@@ -195,11 +195,12 @@ if __name__ == '__main__':
     I3 = I * 3
     print(I3.sampling())
     print(I3.var_name)
+    print(N._levels)
 
     print(C.sampling(3, 'LHS'))
 
     # cartesian product of heterogeneous spaces
-    space = C * I * N 
+    space = C * I * N
     print(space.sampling(10))
 
     print((N * 3).var_name)

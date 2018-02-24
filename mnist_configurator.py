@@ -32,24 +32,24 @@ logfile = 'mnist.log'
 class obj_func(object):
     def __init__(self, program):
         self.program = program
-        
+
     def __call__(self, cfg, gpu_no):
         time.sleep(30)
-        gpu_no += 6
+        gpu_no += 1
         print("calling program with gpu "+str(gpu_no))
         cmd = ['python3', self.program, '--cfg', str(cfg), str(gpu_no)]
         outs = ""
         outputval = 0
         try:
-            outs = str(check_output(cmd,stderr=STDOUT, timeout=40000)) # 
-            if os.path.isfile(logfile): 
+            outs = str(check_output(cmd,stderr=STDOUT, timeout=40000)) #
+            if os.path.isfile(logfile):
                 with open(logfile,'a') as f_handle:
                     f_handle.write(outs)
             else:
                 with open(logfile,'w') as f_handle:
                     f_handle.write(outs)
             outs = outs.split("\\n")
-            
+
             outputval = 0
             for i in range(len(outs)-1,1,-1):
                 if re.match("^\d+?\.\d+?$", outs[-i]) is None:
@@ -58,7 +58,7 @@ class obj_func(object):
                 else:
                     print(outs[-i])
                     outputval = -1 * float(outs[-i])
-            
+
             if np.isnan(outputval):
                 outputval = 0
         except subprocess.CalledProcessError as e:
@@ -68,7 +68,7 @@ class obj_func(object):
             print ("Unexpected error:")
             traceback.print_exc()
             print (outs)
-            
+
             outputval = 0
         print(outputval)
         return outputval
@@ -89,12 +89,12 @@ global_pooling = NominalSpace([True, False], "global_pooling")  # global_pooling
 drop_out = ContinuousSpace([1e-5, .9], 'dropout') * 4        # drop_out rate
 lr_rate = ContinuousSpace([1e-4, 1.0e-0], 'lr')        # learning rate
 l2_regularizer = ContinuousSpace([1e-5, 1e-2], 'l2')# l2_regularizer
-search_space =  stack_sizes * strides * filters *  kernel_size * activation * activation_dense * drop_out * lr_rate * l2_regularizer * step * global_pooling 
+search_space =  stack_sizes * strides * filters *  kernel_size * activation * activation_dense * drop_out * lr_rate * l2_regularizer * step * global_pooling
 
-# use random forest as the surrogate model 
+# use random forest as the surrogate model
 model = RandomForest(levels=search_space.levels)
 opt = BayesOpt(search_space, objective, model, max_iter=n_step, random_seed=666,
-               n_init_sample=10, n_point=10, n_jobs=10, minimize=True, 
+               n_init_sample=10, n_point=10, n_jobs=10, minimize=True,
                verbose=True, debug=False, optimizer='MIES', resume_file="mnist.pkl")
 
 incumbent, stop_dict = opt.run()
