@@ -11,8 +11,8 @@ from __future__ import print_function
 import pdb
 import warnings, dill, functools, itertools
 from joblib import Parallel, delayed
-#import copyreg as copy_reg
-import copy_reg
+import copyreg as copy_reg
+#import copy_reg
 
 import pandas as pd
 import numpy as np
@@ -335,7 +335,8 @@ class BayesOpt(object):
         # self.data = self.sampling(self.n_init_sample)
         samples = self._space.sampling(self.n_init_sample)
         self.data = self._to_dataframe(samples)
-        print(self.data)
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print(self.data)
         self.evaluate(self.data, runs=self.init_n_eval)
 
         # set the initial incumbent
