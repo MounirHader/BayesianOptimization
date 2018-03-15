@@ -191,25 +191,26 @@ class BayesOpt2(object):
         return confs.loc[idx]
 
     def _eval(self, x, gpu, runs=1):
-        if isinstance(x, pd.Series):
+        if not isinstance(x, pd.Series):
+            x = x.iloc[0]
 
-            perf_, n_eval = x.perf, x.n_eval
-            # TODO: handle the input type in a better way
-            #try:    # for dictionary input
-            __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu) for i in range(runs)]
-            #except: # for list input
-            #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
-            perf = np.sum(__)
+        perf_, n_eval = x.perf, x.n_eval
+        # TODO: handle the input type in a better way
+        #try:    # for dictionary input
+        __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu) for i in range(runs)]
+        #except: # for list input
+        #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
+        perf = np.sum(__)
 
-            x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
-            x.n_eval += runs
-            print(x)
-            
-            self.eval_count += runs
-            self.eval_hist += __
-            self.eval_hist_id += [x.name] * runs
+        x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
+        x.n_eval += runs
+        print(x)
 
-            return x, runs, __, [x.name] * runs
+        self.eval_count += runs
+        self.eval_hist += __
+        self.eval_hist_id += [x.name] * runs
+
+        return x, runs, __, [x.name] * runs
 
         else:
             print("Cannot evaluate")
@@ -295,6 +296,8 @@ class BayesOpt2(object):
             self.incumbent_id = np.nonzero(perf == np.min(perf))[0][0]
 
             # model re-training
+
+            # TODO at least 2 points need to be in dataframe
             self.fit_and_assess()
             self.iter_count += 1
             self.hist_perf.append(self.data.loc[self.incumbent_id, 'perf'])
@@ -306,7 +309,10 @@ class BayesOpt2(object):
 
             #print "GPU no. {} is waiting for task on thread {}".format(gpu_no, gpu_no)
             if not self.check_stop():
-                confs_ = self.select_candidate()
+                if len(self.data) >= 2:
+                    confs_ = self.select_candidate()
+                else:
+                    confs_ = self._to_dataframe(self._space.sampling(1))
                 q.put(confs_)
             else:
                 break
