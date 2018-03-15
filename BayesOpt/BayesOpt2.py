@@ -190,12 +190,12 @@ class BayesOpt(object):
                 idx.append(i)
         return confs.loc[idx]
 
-    def _eval(self, x, gpu_no=0, runs=1):
+    def _eval(self, x, gpu, runs=1):
 
         perf_, n_eval = x.perf, x.n_eval
         # TODO: handle the input type in a better way
         #try:    # for dictionary input
-        __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu_no) for i in range(runs)]
+        __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu) for i in range(runs)]
         #except: # for list input
         #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
         perf = np.sum(__)
@@ -209,40 +209,25 @@ class BayesOpt(object):
 
         return x, runs, __, [x.name] * runs
 
-    def evaluate(self, data, runs=1):
+    def evaluate(self, data, gpu, runs=1):
         """ Evaluate the candidate points and update evaluation info in the dataframe
         """
         if isinstance(data, pd.Series):
-            self._eval(data)
+            self._eval(data, gpu)
 
-        elif isinstance(data, pd.DataFrame):
-            if self.n_jobs > 1:
-                if self.init_gpus:
-                    gpu_no = range(self.n_jobs)
+        else:
+            print("Cannot evaluate")
 
-                    threads_dict = {}
-
-                    for i in range(self.n_jobs):
-                        q = queue.Queue()
-                        t = threading.Thread(self._eval, (gpu_no[i], q,))
-                        threads_dict["t{}".format(i)] = t
-                        t.start()
-
-                    res = Parallel(n_jobs=self.n_jobs, verbose=False)(
-                        delayed(self._eval, check_pickle=False)(row, gpu_no[k % len(gpu_no)]) \
-                        for k, row in data.iterrows())
-
-                    x, runs, hist, hist_id = list(zip(*res))
-                    self.eval_count += sum(runs)
-                    self.eval_hist += list(itertools.chain(*hist))
-                    self.eval_hist_id += list(itertools.chain(*hist_id))
-                    for i, k in enumerate(data.index):
-                        data.loc[k] = x[i]
-
-            else:
-                for k, row in data.iterrows():
-                    self._eval(row)
-                    data.loc[k, ['n_eval', 'perf']] = row[['n_eval', 'perf']]
+                    # res = Parallel(n_jobs=self.n_jobs, verbose=False)(
+                    #     delayed(self._eval, check_pickle=False)(row, gpu_no[k % len(gpu_no)]) \
+                    #     for k, row in data.iterrows())
+                    #
+                    # x, runs, hist, hist_id = list(zip(*res))
+                    # self.eval_count += sum(runs)
+                    # self.eval_hist += list(itertools.chain(*hist))
+                    # self.eval_hist_id += list(itertools.chain(*hist_id))
+                    # for i, k in enumerate(data.index):
+                    #     data.loc[k] = x[i]
 
     def fit_and_assess(self):
         X, perf = self._get_var(self.data), self.data['perf'].values
