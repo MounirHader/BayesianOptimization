@@ -30,7 +30,7 @@ import os
 # TODO: remove the usage of pandas here change it to customized np.ndarray
 # TODO: adding logging system
 
-class BayesOpt(object):
+class BayesOpt2(object):
     """
     Generic Bayesian optimization algorithm
 
@@ -191,7 +191,7 @@ class BayesOpt(object):
         return confs.loc[idx]
 
     def _eval(self, x, gpu, runs=1):
-        if isinstance(data, pd.Series):
+        if isinstance(x, pd.Series):
 
             perf_, n_eval = x.perf, x.n_eval
             # TODO: handle the input type in a better way
@@ -203,7 +203,8 @@ class BayesOpt(object):
 
             x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
             x.n_eval += runs
-
+            print(x)
+            
             self.eval_count += runs
             self.eval_hist += __
             self.eval_hist_id += [x.name] * runs
@@ -287,6 +288,7 @@ class BayesOpt(object):
             confs_, that, iss, ignorance = self._eval(confs_, gpu_no)
             self.data = self.data.append(confs_)
             self.data.perf = pd.to_numeric(self.data.perf)
+            print(self.data)
             self.eval_count += 1
 
             perf = np.array(self.data.perf)
