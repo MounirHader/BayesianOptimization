@@ -284,7 +284,7 @@ class BayesOpt(object):
 
             confs_ = q.get()
             print(confs_)
-            self._eval(confs_, gpu_no)
+            confs_, that, iss, ignorance = self._eval(confs_, gpu_no)
             self.data = self.data.append(confs_)
             self.data.perf = pd.to_numeric(self.data.perf)
             self.eval_count += 1
