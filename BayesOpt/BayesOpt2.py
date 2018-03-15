@@ -191,32 +191,36 @@ class BayesOpt(object):
         return confs.loc[idx]
 
     def _eval(self, x, gpu, runs=1):
-
-        perf_, n_eval = x.perf, x.n_eval
-        # TODO: handle the input type in a better way
-        #try:    # for dictionary input
-        __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu) for i in range(runs)]
-        #except: # for list input
-        #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
-        perf = np.sum(__)
-
-        x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
-        x.n_eval += runs
-
-        self.eval_count += runs
-        self.eval_hist += __
-        self.eval_hist_id += [x.name] * runs
-
-        return x, runs, __, [x.name] * runs
-
-    def evaluate(self, data, gpu, runs=1):
-        """ Evaluate the candidate points and update evaluation info in the dataframe
-        """
         if isinstance(data, pd.Series):
-            self._eval(data, gpu)
+
+            perf_, n_eval = x.perf, x.n_eval
+            # TODO: handle the input type in a better way
+            #try:    # for dictionary input
+            __ = [self.obj_func(x[self.var_names].to_dict(), gpu_no=gpu) for i in range(runs)]
+            #except: # for list input
+            #    __ = [self.obj_func(self._get_var(x)) for i in range(runs)]
+            perf = np.sum(__)
+
+            x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
+            x.n_eval += runs
+
+            self.eval_count += runs
+            self.eval_hist += __
+            self.eval_hist_id += [x.name] * runs
+
+            return x, runs, __, [x.name] * runs
 
         else:
             print("Cannot evaluate")
+
+    # def evaluate(self, data, gpu, runs=1):
+    #     """ Evaluate the candidate points and update evaluation info in the dataframe
+    #     """
+    #     if isinstance(data, pd.Series):
+    #         self._eval(data, gpu)
+    #
+    #     else:
+    #         print("Cannot evaluate")
 
                     # res = Parallel(n_jobs=self.n_jobs, verbose=False)(
                     #     delayed(self._eval, check_pickle=False)(row, gpu_no[k % len(gpu_no)]) \
@@ -280,7 +284,7 @@ class BayesOpt(object):
 
             confs_ = q.get()
             print(confs_)
-            self.evaluate(confs_, gpu_no)
+            self._eval(confs_, gpu_no)
             self.data = self.data.append(confs_)
             self.data.perf = pd.to_numeric(self.data.perf)
             self.eval_count += 1
@@ -355,7 +359,7 @@ class BayesOpt(object):
         if self.verbose:
             print('acquisition function optimziation...')
 
-        obj_func = self._acquisition(plugin, dx=dx)
+        obj_func = self._acquisition(plugin, dx=False)
         candidates, values = self._argmax_multistart(obj_func)
 
         return candidates, values
