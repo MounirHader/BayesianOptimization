@@ -190,6 +190,11 @@ class BayesOpt2(object):
                 idx.append(i)
         return confs.loc[idx]
 
+    
+    
+    # TODO edit handling of duplicates
+    
+    
     def _eval(self, x, gpu, runs=1):
         if not isinstance(x, pd.Series):
             x = x.iloc[0]
@@ -211,9 +216,6 @@ class BayesOpt2(object):
         self.eval_hist_id += [x.name] * runs
 
         return x, runs, __, [x.name] * runs
-
-        else:
-            print("Cannot evaluate")
 
     # def evaluate(self, data, gpu, runs=1):
     #     """ Evaluate the candidate points and update evaluation info in the dataframe
@@ -294,15 +296,13 @@ class BayesOpt2(object):
 
             perf = np.array(self.data.perf)
             self.incumbent_id = np.nonzero(perf == np.min(perf))[0][0]
-
+            print(self.incumbent_id)
+            
             # model re-training
-
-            # TODO at least 2 points need to be in dataframe
-            self.fit_and_assess()
             self.iter_count += 1
-            self.hist_perf.append(self.data.loc[self.incumbent_id, 'perf'])
+            self.hist_perf.append(self.data.iloc[self.incumbent_id].perf)
 
-            incumbent = self.data.loc[[self.incumbent_id]]
+            incumbent = self.data.iloc[[self.incumbent_id]]
             #return self._get_var(incumbent)[0], incumbent.perf.values
 
             q.task_done()
@@ -310,6 +310,7 @@ class BayesOpt2(object):
             #print "GPU no. {} is waiting for task on thread {}".format(gpu_no, gpu_no)
             if not self.check_stop():
                 if len(self.data) >= 2:
+                    self.fit_and_assess()
                     confs_ = self.select_candidate()
                 else:
                     confs_ = self._to_dataframe(self._space.sampling(1))
@@ -338,7 +339,7 @@ class BayesOpt2(object):
         self.stop_dict['n_eval'] = self.eval_count
         self.stop_dict['n_iter'] = self.iter_count
 
-        incumbent = self.data.loc[[self.incumbent_id]]
+        incumbent = self.data.iloc[[self.incumbent_id]]
         return incumbent, self.stop_dict
 
     def check_stop(self):
