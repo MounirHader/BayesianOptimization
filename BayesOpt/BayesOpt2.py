@@ -15,12 +15,14 @@ import copyreg as copy_reg
 #import copy_reg
 import queue
 import threading
+import time
 
 import pandas as pd
 import numpy as np
 
 from scipy.optimize import fmin_l_bfgs_b
 from sklearn.metrics import r2_score
+from sklearn.exceptions import NotFittedError
 import pickle
 
 from .InfillCriteria import EI, MGFI
@@ -64,7 +66,7 @@ class BayesOpt2(object):
                  minimize=True, noisy=False, eval_budget=None, max_iter=None,
                  n_init_sample=None, n_point=1, n_jobs=1,
                  n_restart=None, optimizer='MIES', wait_iter=3,
-                 verbose=False, random_seed=None,  debug=False, resume_file = ""):
+                 verbose=False, random_seed=None,  debug=False, resume_file = "", available=[]):
 
         self.debug = debug
         self.verbose = verbose
@@ -82,7 +84,8 @@ class BayesOpt2(object):
 
         self.n_point = n_point
         self.n_jobs = min(self.n_point, n_jobs)
-
+        self.available_gpus = available
+        
         self.minimize = minimize
         self.dim = len(self._space)
 
@@ -209,7 +212,6 @@ class BayesOpt2(object):
 
         x.perf = perf / runs if not perf_ else np.mean((perf_ * n_eval + perf))
         x.n_eval += runs
-        print(x)
 
         self.eval_count += runs
         self.eval_hist += __
@@ -238,20 +240,25 @@ class BayesOpt2(object):
                     #     data.loc[k] = x[i]
 
     def fit_and_assess(self):
-        X, perf = self._get_var(self.data), self.data['perf'].values
+        while True:
+            try:
+                X, perf = self._get_var(self.data), self.data['perf'].values
 
-        # normalization the response for numerical stability
-        # e.g., for MGF-based acquisition function
-        perf_min = np.min(perf)
-        perf_max = np.max(perf)
-        perf_ = (perf - perf_min) / (perf_max - perf_min)
+                # normalization the response for numerical stability
+                # e.g., for MGF-based acquisition function
+                perf_min = np.min(perf)
+                perf_max = np.max(perf)
+                perf_ = (perf - perf_min) / (perf_max - perf_min)
 
-        # fit the surrogate model
-        self.surrogate.fit(X, perf_)
+                # fit the surrogate model
+                self.surrogate.fit(X, perf_)
 
-        self.is_update = True
-        perf_hat = self.surrogate.predict(X)
-        self.r2 = r2_score(perf_, perf_hat)
+                self.is_update = True
+                perf_hat = self.surrogate.predict(X)
+                self.r2 = r2_score(perf_, perf_hat)
+                break
+            except:
+                print("Error fitting model, retrying...")
 
         # TODO: in case r2 is really poor, re-fit the model or transform the input?
         if self.verbose:
@@ -287,16 +294,16 @@ class BayesOpt2(object):
             print('GPU no. {} is waiting for task'.format(gpu_no))
 
             confs_ = q.get()
-            print(confs_)
             confs_, that, iss, ignorance = self._eval(confs_, gpu_no)
             self.data = self.data.append(confs_)
             self.data.perf = pd.to_numeric(self.data.perf)
-            print(self.data)
             self.eval_count += 1
 
             perf = np.array(self.data.perf)
             self.incumbent_id = np.nonzero(perf == np.min(perf))[0][0]
-            print(self.incumbent_id)
+            print("Evaluation {}. Current incumbent perf: {} on index {}".format(self.eval_count,
+                                             self.data.iloc[self.incumbent_id].perf,self.incumbent_id))
+            print("{} threads still running...".format(threading.active_count()))
             
             # model re-training
             self.iter_count += 1
@@ -311,7 +318,13 @@ class BayesOpt2(object):
             if not self.check_stop():
                 if len(self.data) >= 2:
                     self.fit_and_assess()
-                    confs_ = self.select_candidate()
+                    while True:
+                        try:
+                            confs_ = self.select_candidate()
+                            break
+                        except:
+                            print("Error selecting candidate, retrying in 5 seconds...")
+                            time.sleep(5)
                 else:
                     confs_ = self._to_dataframe(self._space.sampling(1))
                 q.put(confs_)
@@ -319,6 +332,10 @@ class BayesOpt2(object):
                 break
 
     def run(self):
+        if self.n_jobs > len(self.available_gpus):
+            print("Not enough GPUs available for n_jobs")
+            return 1
+        
         # initialize
         self.data = pd.DataFrame()
         samples = self._space.sampling(self.n_init_sample)
@@ -330,7 +347,8 @@ class BayesOpt2(object):
 
         # launch threads for all GPUs
         for i in range(self.n_jobs):
-            t = threading.Thread(target=self.gpuworker, args=(self.evaluation_queue, i,))
+            t = threading.Thread(target=self.gpuworker, args=(self.evaluation_queue, 
+                                                              self.available_gpus[i],))
             t.setDaemon = True
             t.start()
 
